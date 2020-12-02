@@ -406,7 +406,7 @@ class XTB(Optimizer):
 
         cmd = (
             f'{memory} {self._xtb_path} {xyz} '
-            f'--gfn {self._gfn_version} {optimization}'
+            f'--gfn {self._gfn_version} {optimization} '
             f'{cycles} --parallel {self._num_cores} '
             f'--etemp {self._electronic_temperature} '
             f'{solvent} --chrg {self._charge} '
