@@ -175,6 +175,7 @@ class XTB(Optimizer):
         opt_level='normal',
         max_runs=2,
         calculate_hessian=True,
+        cycles=None,
         num_cores=1,
         electronic_temperature=300,
         solvent=None,
@@ -220,6 +221,9 @@ class XTB(Optimizer):
             ``False`` will drastically speed up the calculation but
             potentially provide incomplete optimizations and forces
             :attr:`max_runs` to be ``1``.
+
+        cycles : :class:`int`, optional
+            The number of cycles the optimisation should run for.
 
         num_cores : :class:`int`, optional
             The number of cores xTB should use.
@@ -282,6 +286,7 @@ class XTB(Optimizer):
         self._opt_level = opt_level
         self._max_runs = max_runs
         self._calculate_hessian = calculate_hessian
+        self._cycles = cycles
         self._num_cores = str(num_cores)
         self._electronic_temperature = str(electronic_temperature)
         self._solvent = solvent
@@ -392,10 +397,17 @@ class XTB(Optimizer):
         else:
             solvent = ''
 
+        if self._cycles is not None:
+            cycles = (
+                f'--cycles {self._cycles}'
+            )
+        else:
+            cycles = ''
+
         cmd = (
             f'{memory} {self._xtb_path} {xyz} '
-            f'--gfn {self._gfn_version} '
-            f'{optimization} --parallel {self._num_cores} '
+            f'--gfn {self._gfn_version} {optimization}'
+            f'{cycles} --parallel {self._num_cores} '
             f'--etemp {self._electronic_temperature} '
             f'{solvent} --chrg {self._charge} '
             f'--uhf {self._num_unpaired_electrons}'
