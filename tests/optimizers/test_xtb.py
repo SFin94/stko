@@ -1,10 +1,18 @@
+"""Module of tests for XTB Optimizers."""
 import sys
 import pytest
 import stk
+import os
+from os.path import join
 
 from stko import XTB, XTBCREST, XTBFF, XTBFFCREST
 from stko import XTBOptimizerError, XTBConvergenceError, CRESTOptimizerError
 from stko import CRESTNotStartedError, CRESTNotCompletedError, CRESTSettingConflictError
+from.utilities import compare_benzenes
+
+odir = 'xtb_tests_output'
+if not os.path.exists(odir):
+    os.mkdir(odir)
 
 # Only run tests if xtb executable present.
 xtb = pytest.mark.skipif(
@@ -12,36 +20,43 @@ xtb = pytest.mark.skipif(
     reason="Only run when explicitly asked."
 )
 
+@xtb
+def test_optimizer(xtb_path, benzene_build, tmpdir):
+    xtb_test_optimizer = XTB(
+        xtb_path=xtb_path,
+        output_dir=join(odir, 'test_optimizer1'),
+        unlimited_memory=True,
+        max_runs=1,
+        calculate_hessian=True
+    )
+    opt_benzene = xtb_test_optimizer(benzene_build)
+    compare_benzenes(
+        initial_molecule=benzene_build,
+        optimized_molecule=opt_benzene,
+    )
 
 @xtb
 def test_no_neg_frequencies(xtb_path, tmpdir):
     """Test negative frequencies are correctly checked for."""
-    # Create benzene molecule.
-    benzene_unopt = stk.BuildingBlock(smiles='c1ccccc1')
     # Optimize molecule.    
-    xtb_test = XTB(
+    xtb_test_optimizer = XTB(
         xtb_path=xtb_path,
         output_dir=tmpdir,
         unlimited_memory=True,
         max_runs=1,
         calculate_hessian=True
     )
-    benzene_opt = xtb_test.optimize(benzene_unopt)
+    opt_benzene = xtb_test_optimizer(benzene_build)
     output_file = tmpdir+'/optimization_1.output'
 
     # Test for no imgainary frequencies.
-    assert xtb_test._has_neg_frequencies(output_file) is False
+    assert xtb_test_optimizer._has_neg_frequencies(output_file) is False
 
 @xtb
-def test_no_neg_frequencies(xtb_path, tmpdir):
+def test_neg_frequencies(xtb_path, tmpdir):
     """Test negative frequencies are correctly checked for."""
-    # Create benzene molecule that will not optimise to min.
-    benzene_unopt = stk.BuildingBlock(smiles='c1ccccc1')    
-    new_pos_mat = benzene_unopt.get_position_matrix()
-    new_pos_mat[1] = [4, 4, 4]
-    benzene_unopt = benzene_unopt.with_position_matrix(new_pos_mat)
     # Optimize molecule but with reduced number of cycles.    
-    xtb_test = XTB(
+    xtb_test_optimizer = XTB(
         xtb_path=xtb_path,
         output_dir=tmpdir,
         unlimited_memory=True,
@@ -49,44 +64,22 @@ def test_no_neg_frequencies(xtb_path, tmpdir):
         cycles=10,
         calculate_hessian=True
     )
-    benzene_opt = xtb_test.optimize(benzene_unopt)
+    benzene_unopt = xtb_test_optimizer.optimize(benzene_unopt_build)
     output_file = tmpdir+'/optimization_1.output'
 
     # Test for no imgainary frequencies.
-    assert xtb_test._has_neg_frequencies(output_file) is True
+    assert xtb_test_optimizer._has_neg_frequencies(output_file) is True
 
 @xtb
 def test_no_output_file(xtb_path):
     """Test correct error raised if no output file created."""   
     # Create XTB instance.
-    xtb_test = XTB(
+    xtb_test_optimizer = XTB(
         xtb_path=xtb_path,
         unlimited_memory=True,
         max_runs=1,
         calculate_hessian=True
     )
     with pytest.raises(XTBOptimizerError):
-        xtb_test._is_complete('fake_output_file')
+        xtb_test_optimizer._is_complete('dummy_output_file')
 
-@xtb
-def test_not_converged(xtb_path, tmpdir):
-    """Test correct error raised if no output file created."""   
-    # Create benzene molecule that will not optimise to min.
-    benzene_unopt = stk.BuildingBlock(smiles='c1ccccc1')    
-    new_pos_mat = benzene_unopt.get_position_matrix()
-    new_pos_mat[1] = [4, 4, 4]
-    benzene_unopt = benzene_unopt.with_position_matrix(new_pos_mat)
-    # Optimize molecule but with reduced number of cycles.    
-    xtb_test = XTB(
-        xtb_path=xtb_path,
-        output_dir=tmpdir,
-        unlimited_memory=True,
-        max_runs=1,
-        cycles=10,
-        calculate_hessian=True
-    )
-    benzene_opt = xtb_test.optimize(benzene_unopt)
-    output_file = tmpdir+'/optimization_1.output'
-    
-    with pytest.raises(XTBOptimizerError):
-        xtb_test._is_complete('fake_output_file')
